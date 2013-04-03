@@ -32,9 +32,9 @@
     depends on the number of users who have submitted jobs, and the latter is
     set to this property value. For example, suppose the value of this
     property is 25. If two users have submitted jobs to a queue, no single
-    user can use more than 50% of the queue resources. If a third user submits
-    a job, no single user can use more than 33% of the queue resources. With 4
-    or more users, no user can use more than 25% of the queue's resources. A
+    user can use more than 50 percent of the queue resources. If a third user submits
+    a job, no single user can use more than 33 percent of the queue resources. With 4
+    or more users, no user can use more than 25 percent of the queue's resources. A
     value of 100 implies no user limits are imposed.
     </description>
   </property>

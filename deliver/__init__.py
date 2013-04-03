@@ -6,6 +6,10 @@ import socket
 import paramiko
 import time
 from glob import glob
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 # import sys, os, time, paramiko
 known_hosts_path = os.path.expanduser('~/.ssh/known_hosts')
 # private_key_path = os.path.expanduser('~/.ssh/id_rsa')
@@ -22,6 +26,7 @@ class Server(object):
         self.ssh_client = paramiko.SSHClient()
         self.ssh_client.load_host_keys(known_hosts_path)
         self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        logging.debug('SSHClient connecting to %s' % hostname)        
         self.ssh_client.connect(hostname)
 
         self.transport = self.ssh_client.get_transport()
@@ -30,7 +35,7 @@ class Server(object):
         # self.session.get_pty()
         self.session.invoke_shell()
 
-        print 'Connected to', self.transport.getpeername()  # e.g., ('69.164.206.80', 22)
+        logging.debug('Connected to %s:%d.' % self.transport.getpeername())  # e.g., ('69.164.206.80', 22)
 
     def recvall(self):
         for i in range(10):  # 1s timeout
@@ -96,7 +101,7 @@ def dismantle(namenode, jobnode, slaves, user):
 
 def write_templates(server, params):
     for conf_filename in glob('conf/*'):
-        print '- writing config: %s' % conf_filename
+        logging.debug('Writing config: %s' % conf_filename)
         template = open(conf_filename).read()
         server.write_file(os.path.join(HADOOP_HOME, conf_filename), template % params)
 
@@ -123,13 +128,13 @@ def construct(namenode, jobnode, slaves, user):
     )
 
     for hostname in masters + slaves:
-        print 'Setting up host:', hostname
+        logging.debug('Setting up host: %s' % hostname)
         server = Server(hostname)
         write_templates(server, params)
         server.write_file(os.path.join(HADOOP_HOME, 'conf/masters'), '\n'.join(masters))
         server.write_file(os.path.join(HADOOP_HOME, 'conf/slaves'), '\n'.join(slaves))
         for directory in directories:
-            print server.communicate('mkdir -p "%s"' % directory)
+            server.communicate('mkdir -p "%s"' % directory)
 
 
     # $HADOOP_HOME/bin/hadoop namenode -format

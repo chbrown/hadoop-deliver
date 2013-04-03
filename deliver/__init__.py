@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import os
+import pwd
 # import sys
 import argparse
 import socket
@@ -10,12 +11,10 @@ from glob import glob
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-# import sys, os, time, paramiko
 known_hosts_path = os.path.expanduser('~/.ssh/known_hosts')
 # private_key_path = os.path.expanduser('~/.ssh/id_rsa')
 
 HADOOP_HOME = '/etc/hadoop'
-# HADOOP_CONF = os.path.join(HADOOP_HOME, 'conf')
 
 
 class Server(object):
@@ -31,7 +30,7 @@ class Server(object):
 
         self.transport = self.ssh_client.get_transport()
         self.session = self.transport.open_session()
-        # self.session.set_combine_stderr(True)
+        self.session.set_combine_stderr(True)
         # self.session.get_pty()
         self.session.invoke_shell()
 
@@ -52,11 +51,17 @@ class Server(object):
         return self.recvall()
 
     def write_file(self, filepath, string):
+        logging.debug('Writing %d characters to file: %s' % (len(string), filepath))
         session = self.transport.open_session()
+        session.set_combine_stderr(True)
         session.invoke_shell()
         session.send('cat > "%s" < /dev/stdin\n' % filepath)
         session.send(string + '\n')
         session.shutdown_write()
+        if session.recv_ready():
+            return session.recv(1024*1024)
+        return ''
+        
 
 
     # _, stdout, _ = ssh.exec_command('env')
@@ -68,13 +73,14 @@ def main():
     parser.add_argument('--namenode', help='Defaults to `hostname -s` on this machine.')
     parser.add_argument('--jobnode', help='Defaults to namenode.')
     parser.add_argument('--slaves', nargs='*')
-    parser.add_argument('--user', default=os.getlogin())
+    parser.add_argument('--user', default=pwd.getpwuid(os.getuid()).pw_name)
+    parser.add_argument('--group', default='admin')
     opts = parser.parse_args()
 
     namenode = opts.namenode or socket.gethostname().split('.')[0]
     jobnode = opts.jobnode or namenode
 
-    construct(namenode, jobnode, opts.slaves, opts.user)
+    construct(namenode, jobnode, opts.slaves, opts.user, opts.group)
 
 
 def put():
@@ -89,7 +95,7 @@ def put():
     os.system('hadoop fs -ls')
 
 
-def dismantle(namenode, jobnode, slaves, user):
+def dismantle(namenode, jobnode, slaves):
     # hosts = set([namenode, jobnode] + slaves)
     stop_all_sh = os.path.join(HADOOP_HOME, 'bin/stop-all.sh')
     #ssh -Y $slavehost "rm -rf /hadoop/$USER"
@@ -103,10 +109,11 @@ def write_templates(server, params):
     for conf_filename in glob('conf/*'):
         logging.debug('Writing config from template: %s' % conf_filename)
         template = open(conf_filename).read()
-        server.write_file(os.path.join(HADOOP_HOME, conf_filename), template % params)
+        write_result = server.write_file(os.path.join(HADOOP_HOME, conf_filename), template % params)
+        logging.debug('Write result: %s' % write_result)
 
 
-def construct(namenode, jobnode, slaves, user):
+def construct(namenode, jobnode, slaves, user, group):
     masters = list(set([namenode, jobnode]))
 
     # ensure these dirs exist:
@@ -122,27 +129,27 @@ def construct(namenode, jobnode, slaves, user):
         map_tasks_max=8,
         reduce_tasks_max=8,
         task_xmx='3g',
-        # user=user,
         datadir=datadir,
         hadoop_heapsize=6000
     )
     logging.debug('Interpolation parameters: %s' % str(params))
 
     for hostname in masters + slaves:
-        logging.info('Constructing host: %s' % hostname)
+        logging.info('Constructing host: %s (as user:group -> %s:%s) ' % (hostname, user, group))
         server = Server(hostname)
+        login_message = server.recvall()
+        logging.debug(login_message)
         for directory in directories:
             logging.info('Ensuring directory exists: %s' % directory)
-            server.communicate('mkdir -p "%s"' % directory)
+            mkdir_output = server.communicate('sudo mkdir -p "%s"' % directory)
+            chown_output = server.communicate('sudo chown -R %s:%s %s' % (user, group, directory))
+            logging.debug('Result: %s, %s' % (mkdir_output, chown_output))
 
         write_templates(server, params)
         server.write_file(os.path.join(HADOOP_HOME, 'conf/masters'), '\n'.join(masters))
         server.write_file(os.path.join(HADOOP_HOME, 'conf/slaves'), '\n'.join(slaves))
 
-
     # $HADOOP_HOME/bin/hadoop namenode -format
     # start_all_sh = os.path.join(HADOOP_HOME, 'bin/start-all.sh')
     # server.send('sh %s' % start_all_sh)
 
-# fern = Server('fern')
-# fern.write_file('/tmp/voila-hadoop-deliver', 'April 3rd, 2013, you\'re right.')

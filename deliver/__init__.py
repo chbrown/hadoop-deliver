@@ -96,6 +96,7 @@ def dismantle(namenode, jobnode, slaves, user):
 
 def write_templates(server, params):
     for conf_filename in glob('conf/*'):
+        print '- writing config: %s' % conf_filename
         template = open(conf_filename).read()
         server.write_file(os.path.join(HADOOP_HOME, conf_filename), template % params)
 

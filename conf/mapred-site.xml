@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+  <configuration>
+    <property>
+      <name>mapred.job.tracker</name>
+      <value>%(jobnode)s:%(port)d</value>
+    </property>
+    <property>
+      <name>mapred.tasktracker.map.tasks.maximum</name>
+      <value>%(map_tasks_max)s</value>
+    </property>
+    <property>
+      <name>mapred.tasktracker.reduce.tasks.maximum</name>
+      <value>%(reduce_tasks_max)s</value>
+    </property>
+    <property>
+       <name>mapred.local.dir</name>
+       <value>%(datadir)s/local</value>
+    </property>
+    <property>
+       <name>mapred.system.dir</name>
+       <value>%(datadir)s/system</value>
+    </property>
+    <property>
+      <name>mapred.child.java.opts</name>
+      <value>-Xmx%(task_xmx)s</value>
+    </property>
+  </configuration>
+</configuration>

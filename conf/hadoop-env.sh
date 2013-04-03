@@ -3,8 +3,8 @@ export HADOOP_HOME=%(hadoop_home)s
 export HADOOP_CONF_DIR=$HADOOP_HOME/conf
 export HADOOP_LOG_DIR=$HADOOP_HOME/logs
 export HADOOP_SLAVES=$HADOOP_CONF_DIR/slaves
-#export HADOOP_PID_DIR=/hadoop/%(user)s/pids
-#export HADOOP_TMP_DIR=/hadoop/%(user)s/tmp
+#export HADOOP_PID_DIR=%(datadir)s/pids
+#export HADOOP_TMP_DIR=%(datadir)s/tmp
 #export TMP=/hadoop/$USER/tmp
 # The maximum amount of heap to use, in MB. Default is 1000.
 export HADOOP_HEAPSIZE=%(hadoop_heapsize)s

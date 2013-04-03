@@ -60,7 +60,7 @@ class Server(object):
 
 def main():
     parser = argparse.ArgumentParser(description='Deliver a Hadoop install to a cluster.')
-    parser.add_argument('--namenode', default='Defaults to `hostname -s` on this machine.')
+    parser.add_argument('--namenode', help='Defaults to `hostname -s` on this machine.')
     parser.add_argument('--jobnode', help='Defaults to namenode.')
     parser.add_argument('--slaves', nargs='*')
     parser.add_argument('--user', default=os.getlogin())

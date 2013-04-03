@@ -26,7 +26,7 @@ class Server(object):
         self.ssh_client = paramiko.SSHClient()
         self.ssh_client.load_host_keys(known_hosts_path)
         self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        logging.debug('SSHClient connecting to %s' % hostname)        
+        logging.debug('SSHClient connecting to %s' % hostname)
         self.ssh_client.connect(hostname)
 
         self.transport = self.ssh_client.get_transport()
@@ -101,7 +101,7 @@ def dismantle(namenode, jobnode, slaves, user):
 
 def write_templates(server, params):
     for conf_filename in glob('conf/*'):
-        logging.debug('Writing config: %s' % conf_filename)
+        logging.debug('Writing config from template: %s' % conf_filename)
         template = open(conf_filename).read()
         server.write_file(os.path.join(HADOOP_HOME, conf_filename), template % params)
 
@@ -126,15 +126,18 @@ def construct(namenode, jobnode, slaves, user):
         datadir=datadir,
         hadoop_heapsize=6000
     )
+    logging.debug('Interpolation parameters: %s' % str(params))
 
     for hostname in masters + slaves:
-        logging.debug('Setting up host: %s' % hostname)
+        logging.info('Constructing host: %s' % hostname)
         server = Server(hostname)
+        for directory in directories:
+            logging.info('Ensuring directory exists: %s' % directory)
+            server.communicate('mkdir -p "%s"' % directory)
+
         write_templates(server, params)
         server.write_file(os.path.join(HADOOP_HOME, 'conf/masters'), '\n'.join(masters))
         server.write_file(os.path.join(HADOOP_HOME, 'conf/slaves'), '\n'.join(slaves))
-        for directory in directories:
-            server.communicate('mkdir -p "%s"' % directory)
 
 
     # $HADOOP_HOME/bin/hadoop namenode -format

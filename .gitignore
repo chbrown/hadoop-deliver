@@ -1,0 +1,5 @@
+.DS_Store
+/build/
+/dist/
+/hadoop_deliver.egg-info/
+*.pyc

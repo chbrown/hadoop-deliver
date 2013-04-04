@@ -17,6 +17,11 @@ known_hosts_path = os.path.expanduser('~/.ssh/known_hosts')
 HADOOP_HOME = '/etc/hadoop'
 
 
+def collapse_path(*parts):
+    flat = os.path.join(*parts)
+    return os.path.normpath(os.path.expanduser(flat))
+
+
 class Server(object):
     def __init__(self, hostname):
         self.hostname = hostname
@@ -68,9 +73,9 @@ class Server(object):
         sftp = paramiko.SFTPClient.from_transport(self.transport)
         for base, dirnames, filenames in os.walk('.'):
             for dirname in dirnames:
-                sftp.mkdir(os.path.join(base, dirname), 774)
+                sftp.mkdir(collapse_path(remote, base, dirname), 0774)
             for filename in filenames:
-                sftp.put(os.path.join(base, filename), os.path.join(remote, base, filename))
+                sftp.put(collapse_path(base, filename), collapse_path(remote, base, filename))
         os.chdir(cwd)
 
     # _, stdout, _ = ssh.exec_command('env')

@@ -154,7 +154,7 @@ def construct(namenode, jobnode, slaves, user, group, hadoop):
             logging.info('Ensuring directory exists: %s' % directory)
             mkdir_output = server.communicate('sudo mkdir -p "%s"' % directory)
             chown_output = server.communicate('sudo chown -R %s:%s %s' % (user, group, directory))
-            logging.debug('Result: %s, %s' % (mkdir_output, chown_output))
+            logging.debug('Result: %s %s' % (mkdir_output, chown_output))
 
         server.write_tree(hadoop, HADOOP_HOME)
 

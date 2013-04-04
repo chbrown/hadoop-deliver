@@ -61,8 +61,17 @@ class Server(object):
         if session.recv_ready():
             return session.recv(1024*1024)
         return ''
-        
 
+    def write_tree(self, local, remote):
+        cwd = os.getcwd()
+        os.chdir(local)
+        sftp = paramiko.SFTPClient.from_transport(self.transport)
+        for base, dirnames, filenames in os.walk('.'):
+            for dirname in dirnames:
+                sftp.mkdir(os.path.join(base, dirname), 774)
+            for filename in filenames:
+                sftp.put(os.path.join(base, filename), os.path.join(remote, base, filename))
+        os.chdir(cwd)
 
     # _, stdout, _ = ssh.exec_command('env')
     # print stdout.read()
@@ -75,12 +84,14 @@ def main():
     parser.add_argument('--slaves', nargs='*')
     parser.add_argument('--user', default=pwd.getpwuid(os.getuid()).pw_name)
     parser.add_argument('--group', default='admin')
+    parser.add_argument('--hadoop')
     opts = parser.parse_args()
 
+    hadoop = os.path.expanduser(opts.hadoop)
     namenode = opts.namenode or socket.gethostname().split('.')[0]
     jobnode = opts.jobnode or namenode
 
-    construct(namenode, jobnode, opts.slaves, opts.user, opts.group)
+    construct(namenode, jobnode, opts.slaves, opts.user, opts.group, hadoop)
 
 
 def put():
@@ -113,7 +124,7 @@ def write_templates(server, params):
         logging.debug('Write result: %s' % write_result)
 
 
-def construct(namenode, jobnode, slaves, user, group):
+def construct(namenode, jobnode, slaves, user, group, hadoop):
     masters = list(set([namenode, jobnode]))
 
     # ensure these dirs exist:
@@ -144,6 +155,8 @@ def construct(namenode, jobnode, slaves, user, group):
             mkdir_output = server.communicate('sudo mkdir -p "%s"' % directory)
             chown_output = server.communicate('sudo chown -R %s:%s %s' % (user, group, directory))
             logging.debug('Result: %s, %s' % (mkdir_output, chown_output))
+
+        server.write_tree(hadoop, HADOOP_HOME)
 
         write_templates(server, params)
         server.write_file(os.path.join(HADOOP_HOME, 'conf/masters'), '\n'.join(masters))

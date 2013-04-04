@@ -73,7 +73,11 @@ class Server(object):
         sftp = paramiko.SFTPClient.from_transport(self.transport)
         for base, dirnames, filenames in os.walk('.'):
             for dirname in dirnames:
-                sftp.mkdir(collapse_path(remote, base, dirname), 0774)
+                dirpath = collapse_path(remote, base, dirname)
+                try:
+                    sftp.mkdir(dirpath, 0774)
+                except IOError, exc:
+                    logging.warning('Directory already exists: %s (%s)' % (dirpath, exc))
             for filename in filenames:
                 sftp.put(collapse_path(base, filename), collapse_path(remote, base, filename))
         os.chdir(cwd)

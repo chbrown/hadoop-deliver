@@ -130,8 +130,9 @@ def write_templates(server, params):
         logging.debug('Writing config from template: %s' % conf_filename)
         template = open(conf_filename).read()
         # don't interpolate values in *.properties files
-        interpolated = template % params if 'properties' not in conf_filename else template
-        write_result = server.write_file(os.path.join(HADOOP_HOME, conf_filename), interpolated)
+        if 'properties' not in conf_filename and '%' in template:
+            template = template % params
+        write_result = server.write_file(os.path.join(HADOOP_HOME, conf_filename), template)
         logging.debug('Write result: %s' % write_result)
 
 

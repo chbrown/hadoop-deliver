@@ -130,8 +130,11 @@ def write_templates(server, params):
         logging.debug('Writing config from template: %s' % conf_filename)
         template = open(conf_filename).read()
         # don't interpolate values in *.properties files
-        if 'properties' not in conf_filename and '%' in template:
+        #if 'properties' not in conf_filename and '%' in template:
+        try:
             template = template % params
+        except TypeError, exc:
+            logging.warning('Templating error (%s): %s' % (exc, template))
         write_result = server.write_file(os.path.join(HADOOP_HOME, conf_filename), template)
         logging.debug('Write result: %s' % write_result)
 

@@ -21,6 +21,11 @@ def collapse_path(*parts):
     flat = os.path.join(*parts)
     return os.path.normpath(os.path.expanduser(flat))
 
+def getquadmode(mode):
+    user = (mode & stat.S_IRWXU) >> 6
+    group = (mode & stat.S_IRWXG) >> 3
+    others = (mode & stat.S_IRWXO)
+    return '0%d%d%d' % (user, group, others)
 
 class Server(object):
     def __init__(self, hostname):
@@ -67,7 +72,7 @@ class Server(object):
             return session.recv(1024*1024)
         return ''
 
-    def write_tree(self, local, remote):
+    def copy_tree(self, local, remote):
         cwd = os.getcwd()
         os.chdir(local)
         sftp = paramiko.SFTPClient.from_transport(self.transport)
@@ -79,7 +84,12 @@ class Server(object):
                 except IOError, exc:
                     logging.warning('Directory already exists: %s (%s)' % (dirpath, exc))
             for filename in filenames:
-                sftp.put(collapse_path(base, filename), collapse_path(remote, base, filename))
+                local_filepath = collapse_path(base, filename)
+                local_mode = os.stat(local_filepath).st_mode
+                remote_filepath = collapse_path(remote, base, filename)
+                sftp.put(local_filepath, remote_filepath)
+                self.communicate('chmod %s "%s"' % (getquadmode(local_mode), remote_filepath))
+        # return to the working directory we were in before.
         os.chdir(cwd)
 
     # _, stdout, _ = ssh.exec_command('env')
@@ -171,7 +181,7 @@ def construct(namenode, jobnode, slaves, user, group, hadoop):
             chown_output = server.communicate('sudo chown -R %s:%s %s' % (user, group, directory))
             logging.debug('Result: %s %s' % (mkdir_output, chown_output))
 
-        server.write_tree(hadoop, HADOOP_HOME)
+        server.copy_tree(hadoop, HADOOP_HOME)
 
         write_templates(server, params)
         server.write_file(os.path.join(HADOOP_HOME, 'conf/masters'), '\n'.join(masters))
@@ -180,4 +190,3 @@ def construct(namenode, jobnode, slaves, user, group, hadoop):
     # $HADOOP_HOME/bin/hadoop namenode -format
     # start_all_sh = os.path.join(HADOOP_HOME, 'bin/start-all.sh')
     # server.send('sh %s' % start_all_sh)
-

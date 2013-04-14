@@ -13,6 +13,10 @@ from glob import glob
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
+here = os.path.dirname(os.path.abspath(__file__))
+package_dir = os.path.dirname(here)
+logging.debug('here=%s package_dir=%s' % (here, package_dir))
+
 known_hosts_path = os.path.expanduser('~/.ssh/known_hosts')
 # private_key_path = os.path.expanduser('~/.ssh/id_rsa')
 
@@ -23,11 +27,13 @@ def collapse_path(*parts):
     flat = os.path.join(*parts)
     return os.path.normpath(os.path.expanduser(flat))
 
+
 def getquadmode(mode):
     user = (mode & stat.S_IRWXU) >> 6
     group = (mode & stat.S_IRWXG) >> 3
     others = (mode & stat.S_IRWXO)
     return '0%d%d%d' % (user, group, others)
+
 
 class Server(object):
     def __init__(self, hostname):
@@ -194,6 +200,7 @@ def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir):
     for hostname in masters + slaves:
         server = Server(hostname)
 
+        os.chdir(package_dir)
         for conf_filename in glob('conf/*'):
             logging.debug('Writing config from template: %s' % conf_filename)
             template = open(conf_filename).read()

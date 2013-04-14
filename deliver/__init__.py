@@ -74,7 +74,7 @@ class Server(object):
             return session.recv(1024*1024)
         return ''
 
-    def put(sftp, local_path, remote_path, mode=None, buffer_length=32768):
+    def put(self, sftp, local_path, remote_path, mode=None, buffer_length=32768):
         file_local = file(local_path, 'rb')
         file_remote = sftp.file(remote_path, 'wb')
         if mode:

@@ -74,6 +74,21 @@ class Server(object):
             return session.recv(1024*1024)
         return ''
 
+    def put(sftp, local_path, remote_path, mode=None, buffer_length=32768):
+        file_local = file(local_path, 'rb')
+        file_remote = sftp.file(remote_path, 'wb')
+        if mode:
+            file_remote.chmod(mode)
+        file_remote.set_pipelined(True)
+        try:
+            while True:
+                data = file_local.read(buffer_length)
+                if len(data) == 0:
+                    break
+                file_remote.write(data)
+        finally:
+            file_remote.close()
+
     def copy_tree(self, local, remote):
         cwd = os.getcwd()
         os.chdir(local)
@@ -87,10 +102,9 @@ class Server(object):
                     logging.warning('Directory already exists: %s (%s)' % (dirpath, exc))
             for filename, st in zip(files, file_stats):
                 local_filepath = collapse_path(base, filename)
-                local_mode = st.st_mode
                 remote_filepath = collapse_path(remote, base, filename)
-                sftp.put(local_filepath, remote_filepath)
-                self.communicate('chmod %s "%s"' % (getquadmode(local_mode), remote_filepath))
+                self.put(sftp, local_filepath, remote_filepath, st.st_mode)
+                # self.communicate('chmod %s "%s"' % (getquadmode(local_mode), remote_filepath))
         # return to the working directory we were in before.
         os.chdir(cwd)
 

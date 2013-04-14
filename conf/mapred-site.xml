@@ -5,7 +5,7 @@
   <configuration>
     <property>
       <name>mapred.job.tracker</name>
-      <value>%(jobnode)s:%(port)d</value>
+      <value>%(jobnode)s:%(jobport)d</value>
     </property>
     <property>
       <name>mapred.tasktracker.map.tasks.maximum</name>

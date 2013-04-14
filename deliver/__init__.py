@@ -184,9 +184,10 @@ def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir):
 
     params = dict(
         hadoop_home=HADOOP_HOME,
-        jobnode=jobnode,
-        port=8021,
         namenode=namenode,
+        nameport=9000,
+        jobnode=jobnode,
+        jobport=9001,
         map_tasks_max=8,
         reduce_tasks_max=8,
         task_xmx='3g',

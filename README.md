@@ -10,3 +10,8 @@
     fern = Server('fern')
     fern.write_tree('/Users/chbrown/Desktop/muolou', '/tmp/testtree')
 
+## Installation
+
+You'll need to install a custom betterwalk, first:
+
+    pip install -e git://github.com/chbrown/betterwalk.git#egg=betterwalk

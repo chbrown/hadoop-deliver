@@ -120,13 +120,18 @@ def main():
     parser.add_argument('--user', default=pwd.getpwuid(os.getuid()).pw_name)
     parser.add_argument('--group', default='admin')
     parser.add_argument('--hadoop')
+    parser.add_argument('--setup', action='store_true')
     opts = parser.parse_args()
 
     hadoop = os.path.expanduser(opts.hadoop)
     namenode = opts.namenode or socket.gethostname().split('.')[0]
     jobnode = opts.jobnode or namenode
 
-    construct(namenode, jobnode, opts.slaves, opts.user, opts.group, hadoop)
+    datadir = '/mnt/hadoop_test'
+    if opts.setup:
+        servers = set([namenode, jobnode] + opts.slaves)
+        setup_filestructure(servers, opts.user, opts.group, hadoop, datadir)
+    write_templates(namenode, jobnode, opts.slaves, opts.user, opts.group, hadoop, datadir)
 
 
 def put():
@@ -151,42 +156,11 @@ def dismantle(namenode, jobnode, slaves):
     # echo 'localhost' > $HADOOP_CONF_DIR/slaves
 
 
-def write_templates(server, params):
-    for conf_filename in glob('conf/*'):
-        logging.debug('Writing config from template: %s' % conf_filename)
-        template = open(conf_filename).read()
-        # don't interpolate values in *.properties files
-        #if 'properties' not in conf_filename and '%' in template:
-        try:
-            template = template % params
-        except TypeError, exc:
-            logging.warning('Templating error (%s): %s' % (exc, template))
-        write_result = server.write_file(os.path.join(HADOOP_HOME, conf_filename), template)
-        logging.debug('Write result: %s' % write_result)
-
-
-def construct(namenode, jobnode, slaves, user, group, hadoop):
-    masters = list(set([namenode, jobnode]))
-
+def setup_filestructure(servers, user, group, hadoop, datadir):
     # ensure these dirs exist:
-    datadir = '/mnt/hadoop_test'
     directories = [HADOOP_HOME, os.path.join(HADOOP_HOME, 'conf'), os.path.join(HADOOP_HOME, 'logs'), datadir]
 
-    # render mapred-site.xml.template -> mapred-site.xml
-    params = dict(
-        hadoop_home=HADOOP_HOME,
-        jobnode=jobnode,
-        port=8021,
-        namenode=namenode,
-        map_tasks_max=8,
-        reduce_tasks_max=8,
-        task_xmx='3g',
-        datadir=datadir,
-        hadoop_heapsize=6000
-    )
-    logging.debug('Interpolation parameters: %s' % str(params))
-
-    for hostname in masters + slaves:
+    for hostname in servers:
         logging.info('Constructing host: %s (as user:group -> %s:%s) ' % (hostname, user, group))
         server = Server(hostname)
         login_message = server.recvall()
@@ -199,9 +173,37 @@ def construct(namenode, jobnode, slaves, user, group, hadoop):
 
         server.copy_tree(hadoop, HADOOP_HOME)
 
-        write_templates(server, params)
-        server.write_file(os.path.join(HADOOP_HOME, 'conf/masters'), '\n'.join(masters))
-        server.write_file(os.path.join(HADOOP_HOME, 'conf/slaves'), '\n'.join(slaves))
+def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir):
+    masters = list(set([namenode, jobnode]))
+
+    params = dict(
+        hadoop_home=HADOOP_HOME,
+        jobnode=jobnode,
+        port=8021,
+        namenode=namenode,
+        map_tasks_max=8,
+        reduce_tasks_max=8,
+        task_xmx='3g',
+        datadir=datadir,
+        hadoop_heapsize=6000,
+        master_list='\n'.join(masters),
+        slave_list='\n'.join(slaves)
+    )
+    logging.debug('Interpolation parameters: %s' % str(params))
+
+    for hostname in masters + slaves:
+        server = Server(hostname)
+
+        for conf_filename in glob('conf/*'):
+            logging.debug('Writing config from template: %s' % conf_filename)
+            template = open(conf_filename).read()
+            try:
+                template = template % params
+            except TypeError, exc:
+                logging.warning('Templating error (%s): %s' % (exc, template))
+            filepath = os.path.join(HADOOP_HOME, conf_filename)
+            write_result = server.write_file(filepath, template)
+            logging.debug('Writing to %s: %s' % (filepath, write_result))
 
     # $HADOOP_HOME/bin/hadoop namenode -format
     # start_all_sh = os.path.join(HADOOP_HOME, 'bin/start-all.sh')

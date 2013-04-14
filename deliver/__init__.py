@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 import os
+import stat
 import pwd
 # import sys
 import argparse
 import socket
 import paramiko
 import time
+import betterwalk
 from glob import glob
 
 import logging
@@ -76,16 +78,16 @@ class Server(object):
         cwd = os.getcwd()
         os.chdir(local)
         sftp = paramiko.SFTPClient.from_transport(self.transport)
-        for base, dirnames, filenames in os.walk('.'):
-            for dirname in dirnames:
+        for base, dirs, dir_states, files, file_stats in betterwalk.walk_stat('.', fields=['st_mode']):
+            for dirname in dirs:
                 dirpath = collapse_path(remote, base, dirname)
                 try:
                     sftp.mkdir(dirpath, 0774)
                 except IOError, exc:
                     logging.warning('Directory already exists: %s (%s)' % (dirpath, exc))
-            for filename in filenames:
+            for filename, st in zip(files, file_stats):
                 local_filepath = collapse_path(base, filename)
-                local_mode = os.stat(local_filepath).st_mode
+                local_mode = st.st_mode
                 remote_filepath = collapse_path(remote, base, filename)
                 sftp.put(local_filepath, remote_filepath)
                 self.communicate('chmod %s "%s"' % (getquadmode(local_mode), remote_filepath))

@@ -191,7 +191,7 @@ def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir):
         reduce_tasks_max=8,
         task_xmx='3g',
         datadir=datadir,
-        hadoop_heapsize=6000,
+        hadoop_heapsize=2000,
         master_list='\n'.join(masters),
         slave_list='\n'.join(slaves)
     )
@@ -207,7 +207,7 @@ def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir):
             try:
                 template = template % params
             except TypeError, exc:
-                logging.warning('Templating error (%s): %s' % (exc, template))
+                logging.warning('Templating error (%s): %s' % (exc, template[:1000]))
             filepath = os.path.join(HADOOP_HOME, conf_filename)
             write_result = server.write_file(filepath, template)
             logging.debug('Writing to %s: %s' % (filepath, write_result))

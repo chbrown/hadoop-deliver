@@ -125,6 +125,8 @@ def main():
     parser.add_argument('--slaves', nargs='*')
     parser.add_argument('--user', default=pwd.getpwuid(os.getuid()).pw_name)
     parser.add_argument('--group', default='admin')
+    parser.add_argument('--datadir', default='/mnt/hadoop/hdfs')
+    parser.add_argument('--mapdir', default='/mnt/hadoop/mapred')
     parser.add_argument('--hadoop')
     parser.add_argument('--setup', action='store_true')
     opts = parser.parse_args()
@@ -133,11 +135,10 @@ def main():
     namenode = opts.namenode or socket.gethostname().split('.')[0]
     jobnode = opts.jobnode or namenode
 
-    datadir = '/mnt/hadoop_test'
     if opts.setup:
         servers = set([namenode, jobnode] + opts.slaves)
-        setup_filestructure(servers, opts.user, opts.group, hadoop, datadir)
-    write_templates(namenode, jobnode, opts.slaves, opts.user, opts.group, hadoop, datadir)
+        setup_filestructure(servers, opts.user, opts.group, hadoop, opts.datadir)
+    write_templates(namenode, jobnode, opts.slaves, opts.user, opts.group, hadoop, opts.datadir, opts.mapdir)
 
 
 def put():
@@ -179,7 +180,7 @@ def setup_filestructure(servers, user, group, hadoop, datadir):
 
         server.copy_tree(hadoop, HADOOP_HOME)
 
-def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir):
+def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir, mapdir):
     masters = list(set([namenode, jobnode]))
 
     params = dict(
@@ -192,6 +193,7 @@ def write_templates(namenode, jobnode, slaves, user, group, hadoop, datadir):
         reduce_tasks_max=8,
         task_xmx='3g',
         datadir=datadir,
+        mapdir=mapdir,
         hadoop_heapsize=2000,
         master_list='\n'.join(masters),
         slave_list='\n'.join(slaves)

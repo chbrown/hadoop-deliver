@@ -17,11 +17,11 @@
     </property>
     <property>
        <name>mapred.local.dir</name>
-       <value>%(datadir)s/local</value>
+       <value>%(mapdir)s/local</value>
     </property>
     <property>
        <name>mapred.system.dir</name>
-       <value>%(datadir)s/system</value>
+       <value>%(mapdir)s/system</value>
     </property>
     <property>
       <name>mapred.child.java.opts</name>
